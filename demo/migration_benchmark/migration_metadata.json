@@ -1,0 +1,85 @@
+{
+  "benchmark": "profile-label-directory",
+  "version": 1,
+  "purpose": "A deterministic local API migration with observable compatibility and regression risk.",
+  "baseline_state": "old",
+  "target_state": "target",
+  "old_contract": {
+    "dependency_module": "demo.migration_benchmark.old.legacy_directory",
+    "entry_point": "LegacyDirectory.lookup",
+    "profile_type": "LegacyProfile",
+    "fields": [
+      "first_name",
+      "last_name",
+      "preferred_name"
+    ],
+    "missing_profile_result": null
+  },
+  "target_contract": {
+    "dependency_module": "demo.migration_benchmark.target.profile_directory",
+    "entry_point": "ProfileDirectory.get_profile",
+    "profile_type": "Profile",
+    "fields": [
+      "given_name",
+      "family_name",
+      "display_name"
+    ],
+    "missing_profile_result": null
+  },
+  "expected_migration": {
+    "affected_source_files": [
+      "demo/migration_benchmark/old/legacy_directory.py",
+      "demo/migration_benchmark/old/profile_service.py"
+    ],
+    "affected_tests": [
+      "demo/migration_benchmark/tests/test_old_baseline.py"
+    ],
+    "reference_target_files": [
+      "demo/migration_benchmark/target/profile_directory.py",
+      "demo/migration_benchmark/target/profile_service.py",
+      "demo/migration_benchmark/tests/test_target_fixture.py"
+    ],
+    "steps": [
+      "Replace LegacyDirectory.lookup with ProfileDirectory.get_profile.",
+      "Map first_name and last_name to given_name and family_name.",
+      "Map preferred_name semantics to the optional display_name field.",
+      "Preserve missing, empty-name, and preferred-name behavior.",
+      "Run the same behavior assertions after migration."
+    ]
+  },
+  "compatibility_risks": [
+    "The lookup method is renamed and a stale call will fail.",
+    "The profile field names change and a stale field access will fail.",
+    "The target display_name is optional and is not a guaranteed full name.",
+    "A missing profile remains None and must not be treated as an empty profile."
+  ],
+  "preserved_behavior": [
+    {
+      "user_id": "user-001",
+      "expected_label": "Ada Lovelace"
+    },
+    {
+      "user_id": "user-002",
+      "expected_label": "Amazing Grace"
+    },
+    {
+      "user_id": "user-003",
+      "expected_label": "Unknown"
+    },
+    {
+      "user_id": "empty-user",
+      "expected_label": "Unnamed user"
+    },
+    {
+      "user_id": "missing-user",
+      "expected_label": "Unknown user"
+    }
+  ],
+  "verification": {
+    "baseline_command": "python -m pytest demo/migration_benchmark/tests/test_old_baseline.py -q",
+    "complete_benchmark_command": "python -m pytest demo/migration_benchmark/tests -q",
+    "success_condition": "A correct migration preserves every behavior case.",
+    "future_regression_probe": "An implementation that ignores display_name or returns only given_name fails the user-002 or user-001 case.",
+    "regression_detector": "Not implemented in this benchmark."
+  }
+}
