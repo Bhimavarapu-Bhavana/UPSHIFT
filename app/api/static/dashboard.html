@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UPSHIFT - Migration Safety Dashboard</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --bg-elev: #121821;
+    --panel: #151c26;
+    --panel-2: #1a222e;
+    --line: #243040;
+    --line-soft: #1c2531;
+    --text: #e8eef5;
+    --text-2: #b6c2d0;
+    --muted: #7d8b9c;
+    --accent: #4c8dff;
+    --accent-dim: rgba(76, 141, 255, 0.12);
+    --ok: #35c46b;
+    --ok-dim: rgba(53, 196, 107, 0.12);
+    --bad: #ff5f56;
+    --bad-dim: rgba(255, 95, 86, 0.12);
+    --warn: #e0a92b;
+    --warn-dim: rgba(224, 169, 43, 0.12);
+    --info: #58a6ff;
+    --info-dim: rgba(88, 166, 255, 0.12);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 22px 72px; }
+
+  /* ---------- header ---------- */
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding: 22px 0 20px;
+    margin-bottom: 24px;
+    display: flex; flex-wrap: wrap; gap: 16px;
+    align-items: flex-end; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .wordmark { font-size: 23px; font-weight: 800; letter-spacing: 2.5px; margin: 0; }
+  .eyebrow {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.1px;
+    color: var(--muted); font-weight: 600;
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  }
+  .tagline { margin: 8px 0 0; color: var(--text-2); font-size: 14.5px; max-width: 78ch; }
+  .tagline .sep { color: var(--line); margin: 0 8px; }
+  .boundary {
+    font-size: 11.5px; color: var(--muted); text-align: right;
+    max-width: 34ch; line-height: 1.5;
+  }
+  .boundary b { color: var(--text-2); font-weight: 600; }
+
+  /* ---------- generic card ---------- */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card > h2 {
+    margin: 0 0 4px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+  }
+  .card > .sub { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+
+  /* ---------- request panel ---------- */
+  .request { margin-bottom: 22px; }
+  .request-grid {
+    display: grid; gap: 16px;
+    grid-template-columns: minmax(240px, 1.1fr) repeat(2, minmax(180px, 1fr)) auto;
+    align-items: end;
+  }
+  .field label {
+    display: block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--muted); font-weight: 600; margin-bottom: 6px;
+  }
+  .field .val {
+    font-family: var(--mono); font-size: 13px; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--line-soft);
+    border-radius: 6px; padding: 9px 11px; min-height: 40px;
+    display: flex; align-items: center; word-break: break-all;
+  }
+  select, button {
+    font: inherit; color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px; padding: 9px 12px; min-height: 40px;
+  }
+  select { width: 100%; cursor: pointer; }
+  select:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  button.primary {
+    background: var(--accent); border-color: var(--accent);
+    color: #06101d; font-weight: 700; cursor: pointer; padding-inline: 22px;
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  button.primary:disabled { opacity: 0.5; cursor: progress; }
+  .request-foot {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 12px; color: var(--muted);
+  }
+  .request-foot .note { display: flex; align-items: center; gap: 6px; }
+
+  /* ---------- analysis mode switch ---------- */
+  .modes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .modes label {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--panel-2); font-size: 12.5px; color: var(--text-2);
+    cursor: pointer;
+  }
+  .modes label:has(input:checked) {
+    border-color: var(--accent); background: var(--accent-dim); color: var(--text);
+  }
+  .modes input { accent-color: var(--accent); margin: 0; }
+  .modes .off { opacity: 0.55; cursor: not-allowed; }
+  input[type="text"] {
+    font: inherit; color: var(--text); width: 100%;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 9px 12px; min-height: 40px;
+  }
+  input[type="text"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input[type="text"][aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+  .repo-grid { display: grid; gap: 16px; grid-template-columns: repeat(4, minmax(200px, 1fr)); }
+  .repo-note {
+    margin: 14px 0 0; font-size: 12.5px; color: var(--muted);
+    border-left: 2px solid var(--info); padding-left: 12px;
+  }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  /* ---------- status / idle / loading / error ---------- */
+  .state {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--panel); padding: 20px; margin-bottom: 22px;
+  }
+  .state h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .idle-copy { color: var(--text-2); font-size: 14px; max-width: 80ch; margin: 0; }
+  .spinner {
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 2px solid var(--line); border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite; display: inline-block; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  .bar-indeterminate {
+    height: 3px; border-radius: 2px; background: var(--line-soft);
+    overflow: hidden; margin: 14px 0 16px;
+  }
+  .bar-indeterminate > i {
+    display: block; height: 100%; width: 34%; background: var(--accent);
+    animation: slide 1.25s ease-in-out infinite;
+  }
+  @keyframes slide { 0% { margin-left: -34%; } 100% { margin-left: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .bar-indeterminate > i { animation: none; width: 100%; } }
+  .stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  .stages li { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text-2); }
+  .stages li::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); flex: none;
+  }
+  .error-box { border-color: rgba(255, 95, 86, 0.45); background: var(--bad-dim); }
+  .error-box h2 { color: var(--bad); }
+  .error-box p { margin: 0; color: var(--text-2); font-size: 14px; }
+
+  /* ---------- verdict banner ---------- */
+  .verdict {
+    display: flex; gap: 18px; align-items: flex-start;
+    border: 1px solid var(--line); border-left-width: 4px;
+    border-radius: 10px; background: var(--panel); padding: 20px 22px; margin-bottom: 22px;
+  }
+  .verdict.v-ok { border-left-color: var(--ok); }
+  .verdict.v-bad { border-left-color: var(--bad); }
+  .verdict.v-warn { border-left-color: var(--warn); }
+  .verdict .mark { font-size: 20px; line-height: 1.2; flex: none; }
+  .verdict.v-ok .mark { color: var(--ok); }
+  .verdict.v-bad .mark { color: var(--bad); }
+  .verdict.v-warn .mark { color: var(--warn); }
+  .verdict h2 { margin: 0 0 6px; font-size: 19px; letter-spacing: 0.2px; }
+  .verdict p { margin: 0 0 6px; color: var(--text-2); font-size: 14px; }
+  .verdict .recovery-line {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft);
+    font-size: 13.5px; color: var(--text-2);
+  }
+  .verdict .recovery-line b { color: var(--text); }
+
+  /* ---------- metric strip ---------- */
+  .metrics {
+    display: grid; gap: 14px; margin-bottom: 22px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  }
+  .metric {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 15px 17px;
+  }
+  .metric .k {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); font-weight: 700; margin-bottom: 9px;
+  }
+  .metric .v { font-size: 25px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; }
+  .metric .s { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
+  .metric.ok .v { color: var(--ok); }
+  .metric.bad .v { color: var(--bad); }
+  .metric.warn .v { color: var(--warn); }
+  .metric.info .v { color: var(--info); }
+
+  /* ---------- badges ---------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+    border: 1px solid transparent;
+  }
+  .b-ok { background: var(--ok-dim); color: var(--ok); border-color: rgba(53,196,107,.3); }
+  .b-bad { background: var(--bad-dim); color: var(--bad); border-color: rgba(255,95,86,.3); }
+  .b-warn { background: var(--warn-dim); color: var(--warn); border-color: rgba(224,169,43,.3); }
+  .b-info { background: var(--info-dim); color: var(--info); border-color: rgba(88,166,255,.3); }
+  .b-mute { background: var(--panel-2); color: var(--muted); border-color: var(--line); }
+
+  /* ---------- panels ---------- */
+  .panels { display: grid; gap: 18px; }
+  dl.kv { margin: 0; display: grid; grid-template-columns: minmax(140px, auto) 1fr; gap: 8px 18px; }
+  dl.kv dt { color: var(--muted); font-size: 13px; }
+  dl.kv dd { margin: 0; font-family: var(--mono); font-size: 13px; word-break: break-word; }
+
+  .bars { display: grid; gap: 9px; margin-top: 4px; }
+  .bar-row { display: grid; grid-template-columns: minmax(150px, 210px) 1fr auto; gap: 12px; align-items: center; }
+  .bar-row .lbl { font-size: 12.5px; color: var(--text-2); overflow-wrap: anywhere; }
+  .bar-track { height: 7px; border-radius: 4px; background: var(--line-soft); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+  .bar-fill.f-bad { background: var(--bad); }
+  .bar-fill.f-warn { background: var(--warn); }
+  .bar-fill.f-ok { background: var(--ok); }
+  .bar-row .num { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 46px; text-align: right; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; color: var(--text-2);
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 5px; padding: 4px 8px;
+  }
+  .chip .arw { color: var(--muted); margin: 0 5px; }
+  .chip .to { color: var(--accent); }
+
+  .callout {
+    margin-top: 16px; padding: 12px 14px; border-radius: 7px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    font-size: 13px; color: var(--text-2);
+  }
+  .callout.info { border-color: rgba(88,166,255,.3); background: var(--info-dim); }
+  .callout.warn { border-color: rgba(224,169,43,.35); background: var(--warn-dim); }
+  .callout b { color: var(--text); }
+
+  details.evidence { margin-top: 16px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+  details.evidence > summary {
+    cursor: pointer; font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--muted); font-weight: 600; list-style: none;
+  }
+  details.evidence > summary::before { content: "\25B8\00a0"; }
+  details.evidence[open] > summary::before { content: "\25BE\00a0"; }
+  .filelist { list-style: none; margin: 12px 0 0; padding: 0; max-height: 190px; overflow: auto; }
+  .filelist li {
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    padding: 3px 0; border-bottom: 1px solid var(--line-soft); word-break: break-all;
+  }
+
+  /* ---------- verification table ---------- */
+  table.cases { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 13px; }
+  table.cases caption { text-align: left; color: var(--muted); font-size: 12px; padding-bottom: 10px; }
+  table.cases th {
+    text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--muted); font-weight: 700; padding: 0 10px 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  table.cases td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.cases td.mono { font-family: var(--mono); font-size: 12.5px; }
+  table.cases tr.failed td { background: var(--bad-dim); }
+  table.cases tr.failed td:first-child { box-shadow: inset 2px 0 0 var(--bad); }
+  .expobs { display: grid; gap: 5px; }
+  .expobs .r { display: flex; gap: 8px; align-items: baseline; }
+  .expobs .r .t {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--muted); min-width: 62px; font-weight: 600;
+  }
+  .expobs .r .v { font-family: var(--mono); font-size: 12.5px; }
+  .expobs .r.bad .v { color: var(--bad); }
+  .expobs .r.good .v { color: var(--ok); }
+  .counts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+  /* ---------- recovery timeline ---------- */
+  .timeline { list-style: none; margin: 6px 0 0; padding: 0; }
+  .timeline li { position: relative; padding: 0 0 20px 30px; }
+  .timeline li:last-child { padding-bottom: 0; }
+  .timeline li::before {
+    content: ""; position: absolute; left: 8px; top: 5px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  .timeline li::after {
+    content: ""; position: absolute; left: 12px; top: 18px; bottom: 2px;
+    width: 1px; background: var(--line);
+  }
+  .timeline li:last-child::after { display: none; }
+  .timeline .st {
+    font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .timeline .tick { color: var(--ok); font-weight: 700; }
+  .timeline .why { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .timeline li.bad::before { background: var(--bad); box-shadow: 0 0 0 3px var(--bad-dim); }
+  .timeline li.bad .tick { color: var(--bad); }
+
+  /* ---------- safety story ---------- */
+  .story { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-top: 4px; }
+  .story .node {
+    flex: 1 1 130px; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 7px; padding: 11px 12px; font-size: 12.5px; color: var(--text-2);
+  }
+  .story .node b { display: block; color: var(--text); font-size: 12.5px; margin-bottom: 3px; }
+  .story .arrow { align-self: center; color: var(--line); font-size: 15px; }
+  .story .branch { border-color: var(--line); background: transparent; border-style: dashed; }
+  .story .branch.ok { border-style: solid; border-color: rgba(53,196,107,.4); }
+  .story .branch.bad { border-style: solid; border-color: rgba(255,95,86,.4); }
+
+  /* ---------- safety chain (judge-facing causal walkthrough) ---------- */
+  .chain { list-style: none; margin: 0; padding: 0; }
+  .chain li {
+    position: relative; padding: 0 0 14px 34px; border-left: 2px solid var(--line);
+    margin-left: 11px;
+  }
+  .chain li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .chain li::before {
+    content: attr(data-n); position: absolute; left: -12px; top: -2px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bg-elev); border: 2px solid var(--line);
+    color: var(--muted); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .chain li.c-info::before { border-color: var(--info); color: var(--info); }
+  .chain li.c-ok::before { border-color: var(--ok); color: var(--ok); }
+  .chain li.c-warn::before { border-color: var(--warn); color: var(--warn); }
+  .chain li.c-bad::before { border-color: var(--bad); color: var(--bad); }
+  .chain .cl { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .chain .cv { font-size: 14.5px; color: var(--text); font-weight: 600; margin-top: 1px; }
+  .chain .cd { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+
+  /* The expected/observed proof block, straight from the failing case. */
+  .proof {
+    margin: 4px 0 16px; padding: 14px 16px; border-radius: 9px;
+    background: var(--bad-dim); border: 1px solid rgba(255,95,86,.35);
+  }
+  .proof h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--bad); }
+  .proof .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .proof .side { background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; }
+  .proof .side .k { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .proof .side .val { font-family: var(--mono); font-size: 15px; margin-top: 4px; word-break: break-word; }
+  .proof .side.exp .val { color: var(--ok); }
+  .proof .side.obs .val { color: var(--bad); }
+  .proof .case { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; }
+  @media (max-width: 620px) { .proof .cmp { grid-template-columns: 1fr; } }
+
+  /* ---------- integration status ---------- */
+  .integ { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .integ li {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-left-width: 3px; border-radius: 7px; padding: 11px 13px;
+  }
+  .integ li.s-configured { border-left-color: var(--info); }
+  .integ li.s-verified { border-left-color: var(--ok); }
+  .integ li.s-not_verified, .integ li.s-unavailable, .integ li.s-invalid,
+  .integ li.s-missing, .integ li.s-mismatch { border-left-color: var(--warn); }
+  .integ .st { flex: none; text-align: center; min-width: 92px; }
+  .integ .st .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .9px; font-weight: 700; }
+  .integ li.s-configured .st .k { color: var(--info); }
+  .integ li.s-verified .st .k { color: var(--ok); }
+  .integ li.s-not_verified .st .k, .integ li.s-unavailable .st .k { color: var(--warn); }
+  .integ .body .t { font-size: 13.5px; color: var(--text); font-weight: 600; }
+  .integ .body .e { font-size: 12.5px; color: var(--text-2); margin-top: 3px; }
+  .integ .body .v { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .split > div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 11px 13px; }
+  .split .who { font-size: 12px; font-weight: 700; letter-spacing: .4px; }
+  .split .bob .who { color: var(--accent); }
+  .split .upshift .who { color: var(--ok); }
+  .split p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-2); }
+  @media (max-width: 620px) { .split { grid-template-columns: 1fr; } }
+
+  .hidden { display: none !important; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  footer.foot {
+    margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--muted);
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between;
+  }
+
+  @media (max-width: 900px) {
+    .request-grid { grid-template-columns: 1fr 1fr; }
+    .request-grid .field-actions { grid-column: 1 / -1; }
+    .boundary { text-align: left; max-width: none; }
+  }
+  @media (max-width: 620px) {
+    .shell { padding: 0 14px 56px; }
+    .request-grid { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: 1fr 1fr; }
+    dl.kv { grid-template-columns: 1fr; gap: 3px 0; }
+    dl.kv dd { margin-bottom: 8px; }
+    .bar-row { grid-template-columns: 1fr; gap: 5px; }
+    .bar-row .num { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <div>
+      <div class="brand">
+        <h1 class="wordmark">UPSHIFT</h1>
+        <span class="eyebrow">Migration Safety</span>
+      </div>
+      <p class="tagline">
+        Autonomous Migration Risk &amp; Compatibility Proof Agent
+        <span class="sep">/</span>
+        Analyze migration impact, verify compatibility, and recover safely when behavior regresses.
+      </p>
+    </div>
+    <p class="boundary">
+      <b>Read-only evidence surface.</b> This dashboard displays results produced by the existing
+      UPSHIFT engines. It does not execute migrations and cannot accept, approve, or apply a change.
+    </p>
+  </header>
+
+  <main>
+    <!-- 1. MIGRATION REQUEST -->
+    <section class="card request" aria-labelledby="h-request">
+      <h2 id="h-request">Migration Request</h2>
+      <p class="sub" id="request-sub">Select a controlled candidate. Only statically allowlisted identifiers are accepted.</p>
+      <div class="modes" role="radiogroup" aria-labelledby="modes-label">
+        <span class="visually-hidden" id="modes-label">Analysis mode</span>
+        <label for="mode-demo">
+          <input type="radio" name="mode" id="mode-demo" value="demo" checked>
+          <span>Demo mode</span>
+        </label>
+        <label for="mode-real" id="mode-real-label" class="off">
+          <input type="radio" name="mode" id="mode-real" value="real_repository" aria-describedby="boundary-note">
+          <span>Real repository mode</span>
+        </label>
+      </div>
+      <div id="demo-fields">
+        <div class="request-grid">
+          <div class="field">
+            <label for="candidate">Candidate migration</label>
+            <select id="candidate" aria-describedby="candidate-help"></select>
+          </div>
+          <div class="field">
+            <label for="ro-migration">Migration name</label>
+            <div class="val" id="ro-migration">&mdash;</div>
+          </div>
+          <div class="field">
+            <label for="ro-source">Source component</label>
+            <div class="val" id="ro-source">&mdash;</div>
+          </div>
+          <div class="field field-actions">
+            <button class="primary" id="run" type="button">Analyze Migration</button>
+          </div>
+        </div>
+      </div>
+      <div id="real-fields" class="hidden">
+        <div class="repo-grid">
+          <div class="field">
+            <label for="repo-path">Repository folder</label>
+            <input type="text" id="repo-path" spellcheck="false" autocomplete="off"
+                   aria-describedby="repo-path-help" placeholder="Absolute local folder path">
+          </div>
+          <div class="field">
+            <label for="repo-migration-name">Migration name</label>
+            <input type="text" id="repo-migration-name" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="repo-old-api">Current entry point</label>
+            <input type="text" id="repo-old-api" spellcheck="false" autocomplete="off"
+                   placeholder="package.function">
+          </div>
+          <div class="field">
+            <label for="repo-target-api">Target entry point</label>
+            <input type="text" id="repo-target-api" spellcheck="false" autocomplete="off"
+                   placeholder="package.function">
+          </div>
+        </div>
+        <div class="field field-actions" style="margin-top: 16px">
+          <button class="primary" id="run-real" type="button">Analyze Repository</button>
+        </div>
+        <p class="repo-note" id="boundary-note" role="status" aria-live="polite"></p>
+      </div>
+      <div class="request-foot">
+        <span class="note" id="candidate-help">Validated server-side against a static allowlist.</span>
+        <span class="note" id="target-help">No paths, commands, or scripts can be supplied.</span>
+        <span class="note" id="run-status" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- 2. IDLE / LOADING / ERROR STATES -->
+    <section class="state" id="state-idle" aria-labelledby="h-idle">
+      <h2 id="h-idle">Awaiting Analysis</h2>
+      <p class="idle-copy">
+        No migration has been analyzed in this session. Choose a candidate above and run the analysis
+        to produce impact, risk, verification, decision, and recovery evidence.
+      </p>
+    </section>
+
+    <section class="state hidden" id="state-loading" aria-labelledby="h-loading" aria-busy="true">
+      <h2 id="h-loading"><span class="spinner" aria-hidden="true"></span> Analyzing Migration</h2>
+      <div class="bar-indeterminate" aria-hidden="true"><i></i></div>
+      <p class="idle-copy" id="loading-copy">Running the existing UPSHIFT engines.</p>
+      <ul class="stages" id="stages">
+        <li>Running impact analysis</li>
+        <li>Evaluating compatibility risk</li>
+        <li>Verifying behavior independently</li>
+        <li>Evaluating decision and recovery state</li>
+      </ul>
+    </section>
+
+    <section class="state error-box hidden" id="state-error" role="alert" aria-labelledby="h-error">
+      <h2 id="h-error">Analysis Failed</h2>
+      <p id="error-text">The analysis could not be completed.</p>
+    </section>
+
+    <!-- 3. VERDICT -->
+    <section class="verdict hidden" id="verdict" aria-labelledby="h-verdict" aria-live="polite">
+      <div class="mark" id="verdict-mark" aria-hidden="true"></div>
+      <div>
+        <h2 id="h-verdict"><span id="verdict-title">Migration</span> <span id="verdict-decision"></span></h2>
+        <p id="verdict-detail"></p>
+        <p id="verdict-reason"></p>
+        <div class="recovery-line hidden" id="verdict-recovery"></div>
+      </div>
+    </section>
+
+    <!-- 4. STATUS SUMMARY -->
+    <section class="metrics hidden" id="metrics" aria-label="Migration status summary">
+      <div class="metric info" id="m-impact">
+        <div class="k">Impact</div>
+        <div class="v" id="m-impact-v">&mdash;</div>
+        <div class="s" id="m-impact-s">files requiring review</div>
+      </div>
+      <div class="metric" id="m-risk">
+        <div class="k">Risk</div>
+        <div class="v" id="m-risk-v">&mdash;</div>
+        <div class="s" id="m-risk-s">score &mdash;</div>
+      </div>
+      <div class="metric" id="m-verification">
+        <div class="k">Verification</div>
+        <div class="v" id="m-verification-v">&mdash;</div>
+        <div class="s" id="m-verification-s">&mdash;</div>
+      </div>
+      <div class="metric" id="m-decision">
+        <div class="k">Decision</div>
+        <div class="v" id="m-decision-v">&mdash;</div>
+        <div class="s" id="m-decision-s">&mdash;</div>
+      </div>
+    </section>
+
+    <!-- 4. SAFETY CHAIN: the causal walkthrough a judge follows -->
+    <section class="card chain-card hidden" id="chain-card" aria-labelledby="h-chain">
+      <h2 id="h-chain">The Safety Chain</h2>
+      <p class="sub" id="chain-sub">Every step below is a value returned by the pipeline.</p>
+      <div class="proof hidden" id="proof" role="group" aria-labelledby="h-proof">
+        <h3 id="h-proof">Independent verification caught a behavior regression</h3>
+        <div class="cmp">
+          <div class="side exp"><div class="k">Expected</div><div class="val" id="proof-expected">&mdash;</div></div>
+          <div class="side obs"><div class="k">Observed</div><div class="val" id="proof-observed">&mdash;</div></div>
+        </div>
+        <div class="case" id="proof-case"></div>
+      </div>
+      <ol class="chain" id="chain"></ol>
+    </section>
+
+    <!-- 5. DETAIL PANELS -->
+    <div class="panels hidden" id="panels">
+
+      <section class="card hidden" id="repository-card" aria-labelledby="h-repository">
+        <h2 id="h-repository">Repository Read Evidence</h2>
+        <p class="sub" id="repository-sub">What the bounded, read-only repository read actually covered.</p>
+        <dl class="kv">
+          <dt>Repository</dt><dd id="r-name">&mdash;</dd>
+          <dt>Files inspected</dt><dd id="r-inspected">&mdash;</dd>
+          <dt>Files skipped</dt><dd id="r-skipped">&mdash;</dd>
+          <dt>Bytes read</dt><dd id="r-bytes">&mdash;</dd>
+          <dt>Restoration mechanism</dt><dd id="r-restore">&mdash;</dd>
+        </dl>
+        <details class="evidence">
+          <summary>Read restrictions applied</summary>
+          <ul class="filelist notes" id="r-restrictions"></ul>
+        </details>
+        <details class="evidence">
+          <summary>Inspected files</summary>
+          <ul class="filelist" id="r-files"></ul>
+        </details>
+        <details class="evidence">
+          <summary>Skipped files and why</summary>
+          <ul class="filelist" id="r-skips"></ul>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="h-impact">
+        <h2 id="h-impact">Impact Analysis</h2>
+        <p class="sub">Phase 4 &mdash; read-only textual analysis of the repository.</p>
+        <dl class="kv">
+          <dt>Impacted files</dt><dd id="i-files">&mdash;</dd>
+          <dt>Direct references</dt><dd id="i-direct">&mdash;</dd>
+          <dt>Target references</dt><dd id="i-target">&mdash;</dd>
+          <dt>Metadata listed</dt><dd id="i-meta">&mdash;</dd>
+        </dl>
+        <div class="bars" id="i-bars"></div>
+        <div class="chips" id="i-renamed"></div>
+        <details class="evidence">
+          <summary>Impacted file evidence</summary>
+          <ul class="filelist" id="i-filelist"></ul>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="h-risk">
+        <h2 id="h-risk">Compatibility Risk</h2>
+        <p class="sub">Phase 5 &mdash; explainable, deterministic scoring.</p>
+        <dl class="kv">
+          <dt>Risk level</dt><dd id="r-level">&mdash;</dd>
+          <dt>Risk score</dt><dd id="r-score">&mdash;</dd>
+          <dt>Affected test files</dt><dd id="r-tests">&mdash;</dd>
+        </dl>
+        <div class="bars" id="r-bars"></div>
+        <div class="callout info" id="r-note">
+          <b>Risk is context, not the gate.</b> Risk describes migration complexity.
+          Independent verification determines behavioral compatibility and drives the decision.
+        </div>
+        <details class="evidence">
+          <summary>Risk evidence</summary>
+          <ul class="filelist" id="r-evidence"></ul>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="h-verification">
+        <h2 id="h-verification">Independent Verification</h2>
+        <p class="sub">Phase 6 &mdash; each preserved behavior case re-run against the candidate.</p>
+        <dl class="kv">
+          <dt>Status</dt><dd id="v-status">&mdash;</dd>
+          <dt>Cases</dt><dd id="v-cases">&mdash;</dd>
+        </dl>
+        <div class="counts" id="v-counts"></div>
+        <table class="cases">
+          <caption>Every case result, with expected and observed values.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Case</th>
+              <th scope="col">Status</th>
+              <th scope="col">Expected vs observed</th>
+            </tr>
+          </thead>
+          <tbody id="v-rows"></tbody>
+        </table>
+      </section>
+
+      <section class="card" aria-labelledby="h-recovery">
+        <h2 id="h-recovery">Recovery &amp; Safety</h2>
+        <p class="sub">Phase 9 &mdash; at most one controlled rollback, then independent re-verification.</p>
+        <ol class="timeline" id="r-timeline"></ol>
+        <dl class="kv" id="r-facts-wrap">
+          <dt>Rollback attempted</dt><dd id="r-attempted">&mdash;</dd>
+          <dt>Rollback succeeded</dt><dd id="r-succeeded">&mdash;</dd>
+          <dt>Baseline verification</dt><dd id="r-baseline">&mdash;</dd>
+          <dt>Final verification</dt><dd id="r-final">&mdash;</dd>
+          <dt>Final candidate</dt><dd id="r-candidate">&mdash;</dd>
+          <dt>Re-planning required</dt><dd id="r-replan">&mdash;</dd>
+          <dt>Original decision</dt><dd id="r-original">&mdash;</dd>
+        </dl>
+        <div class="callout warn hidden" id="r-notaccepted"></div>
+        <div class="callout" id="r-explanations"></div>
+        <details class="evidence">
+          <summary>How UPSHIFT decides and recovers</summary>
+          <div class="story">
+            <div class="node"><b>Request</b>Controlled candidate</div>
+            <div class="arrow" aria-hidden="true">&rarr;</div>
+            <div class="node"><b>Analyze</b>Impact + risk</div>
+            <div class="arrow" aria-hidden="true">&rarr;</div>
+            <div class="node"><b>Verify</b>Independent behavior cases</div>
+            <div class="arrow" aria-hidden="true">&rarr;</div>
+            <div class="node branch ok"><b>Safe &rarr; ACCEPT</b>No recovery needed</div>
+            <div class="node branch bad"><b>Regression &rarr; REJECT</b>Rollback, then verify baseline</div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="h-integration">
+        <h2 id="h-integration">IBM Bob &amp; MCP Status</h2>
+        <p class="sub">What is configured, what was verified locally, and what is <em>not</em> claimed.</p>
+        <ul class="integ" id="integ"></ul>
+        <div class="split">
+          <div class="bob">
+            <div class="who">IBM Bob</div>
+            <p id="integ-bob"></p>
+          </div>
+          <div class="upshift">
+            <div class="who">UPSHIFT</div>
+            <p id="integ-upshift"></p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>UPSHIFT &mdash; evidence display only. No migration is executed by this dashboard.</span>
+    <span id="foot-src">Endpoint: POST /api/analyze</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* Small DOM helpers. All text is written with textContent, never innerHTML,
+   so a value coming back from the engine can never be interpreted as markup. */
+function $(id) { return document.getElementById(id); }
+
+function el(tag, className, text) {
+  var node = document.createElement(tag);
+  if (className) { node.className = className; }
+  if (text !== undefined && text !== null) { node.textContent = String(text); }
+  return node;
+}
+
+function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+
+function show(id, visible) {
+  var node = $(id);
+  if (!node) { return; }
+  if (visible) { node.classList.remove("hidden"); } else { node.classList.add("hidden"); }
+}
+
+/* Status is communicated by text first; colour and glyph are secondary. */
+function toneFor(value) {
+  if (value === "PASS" || value === "ACCEPT" || value === "ACCEPTED" || value === "COMPLETED") { return "ok"; }
+  if (value === "FAIL" || value === "REJECT" || value === "RECOVERY_FAILED") { return "bad"; }
+  if (value === "INCONCLUSIVE" || value === "REPLANNING") { return "warn"; }
+  return "info";
+}
+
+function toneClass(tone) { return "b-" + tone; }
+
+function glyphFor(value) {
+  var tone = toneFor(value);
+  if (tone === "ok") { return "\u2713"; }
+  if (tone === "bad") { return "\u2715"; }
+  if (tone === "warn") { return "!"; }
+  return "\u2022";
+}
+
+function badge(value, label) {
+  var tone = toneFor(value);
+  var node = el("span", "badge " + toneClass(tone));
+  var g = el("span", null, glyphFor(value));
+  g.setAttribute("aria-hidden", "true");
+  node.appendChild(g);
+  node.appendChild(document.createTextNode(" " + (label || String(value))));
+  return node;
+}
+
+function kv(target, value) { clear(target); target.appendChild(badge(value)); }
+
+function yesNo(flag) { return flag ? "yes" : "no"; }
+
+function setText(id, text) { var n = $(id); if (n) { n.textContent = text; } }
+
+/* A labelled bar. Widths are relative to the largest value in the same set,
+   so no absolute maximum is invented. */
+function barRow(label, value, max, fillClass) {
+  var row = el("div", "bar-row");
+  row.appendChild(el("div", "lbl", label));
+  var track = el("div", "bar-track");
+  var fill = el("div", "bar-fill" + (fillClass ? " " + fillClass : ""));
+  var ratio = max > 0 ? value / max : 0;
+  fill.style.width = Math.max(0, Math.min(100, ratio * 100)) + "%";
+  track.appendChild(fill);
+  row.appendChild(track);
+  row.appendChild(el("div", "num", String(value)));
+  return row;
+}
+
+function renderImpact(impact) {
+  setText("i-files", String(impact.impacted_file_count));
+  setText("i-direct", String(impact.direct_reference_count));
+  setText("i-target", String(impact.target_reference_count));
+  setText("i-meta", String(impact.metadata_listed_files.length));
+
+  var bars = $("i-bars");
+  clear(bars);
+  var refs = [
+    ["Impacted files", impact.impacted_file_count],
+    ["Direct old-API references", impact.direct_reference_count],
+    ["Target references", impact.target_reference_count]
+  ];
+  var max = Math.max.apply(null, refs.map(function (r) { return r[1]; }));
+  refs.forEach(function (r) { bars.appendChild(barRow(r[0], r[1], max, null)); });
+
+  var renamed = $("i-renamed");
+  clear(renamed);
+  (impact.renamed_symbols || []).forEach(function (pair) {
+    var chip = el("span", "chip");
+    chip.appendChild(document.createTextNode(pair.from));
+    chip.appendChild(el("span", "arw", "\u2192"));
+    chip.appendChild(el("span", "to", pair.to));
+    renamed.appendChild(chip);
+  });
+  if (!(impact.renamed_symbols || []).length) {
+    renamed.appendChild(el("span", "chip", "No renamed symbols reported"));
+  }
+
+  var list = $("i-filelist");
+  clear(list);
+  impact.impacted_files.forEach(function (path) { list.appendChild(el("li", null, path)); });
+}
+
+function renderRisk(risk, decision) {
+  kv($("r-level"), risk.risk_level);
+  setText("r-score", String(risk.risk_score));
+  setText("r-tests", String(risk.affected_test_files.length));
+
+  var bars = $("r-bars");
+  clear(bars);
+  var details = risk.risk_factor_details || [];
+  if (details.length) {
+    var max = details.reduce(function (acc, f) {
+      return Math.max(acc, Math.abs(f.score));
+    }, 0);
+    details.forEach(function (f) {
+      var tone = f.severity === "HIGH" ? "f-bad" : (f.severity === "MEDIUM" ? "f-warn" : "f-ok");
+      bars.appendChild(barRow(f.severity + " \u00b7 " + f.category, Math.abs(f.score), max, tone));
+    });
+  } else {
+    bars.appendChild(el("div", "lbl", "No risk factors reported"));
+  }
+
+  /* Make the risk/decision relationship explicit using the engine's own words. */
+  var note = $("r-note");
+  clear(note);
+  note.appendChild(el("b", null, "Risk is context, not the gate. "));
+  note.appendChild(document.createTextNode(
+    "Reported level " + risk.risk_level + " (score " + risk.risk_score + ") with decision "
+    + decision.decision + ". "
+  ));
+  var independent = (decision.explanations || []).filter(function (line) {
+    return /independent/i.test(line) || /not from risk/i.test(line);
+  });
+  if (independent.length) {
+    note.appendChild(document.createTextNode(independent[0]));
+  } else {
+    note.appendChild(document.createTextNode(
+      "Independent verification determines behavioral compatibility and drives the decision."
+    ));
+  }
+
+  var ev = $("r-evidence");
+  clear(ev);
+  (risk.explanations || []).forEach(function (line) { ev.appendChild(el("li", null, line)); });
+}
+
+function renderVerification(v) {
+  kv($("v-status"), v.verification_status);
+  setText("v-cases", v.total_cases + " total \u00b7 " + v.skipped_cases + " skipped");
+
+  var counts = $("v-counts");
+  clear(counts);
+  counts.appendChild(badge("PASS", v.passed_cases + " passed"));
+  if (v.failed_cases) { counts.appendChild(badge("FAIL", v.failed_cases + " failed")); }
+  if (v.inconclusive_cases) { counts.appendChild(badge("INCONCLUSIVE", v.inconclusive_cases + " inconclusive")); }
+
+  var rows = $("v-rows");
+  clear(rows);
+  (v.case_results || []).forEach(function (c) {
+    var failed = c.status !== "PASS";
+    var tr = el("tr", failed ? "failed" : null);
+    tr.appendChild(el("td", "mono", c.case_id));
+    var statusCell = el("td");
+    statusCell.appendChild(badge(c.status));
+    tr.appendChild(statusCell);
+
+    var cell = el("td");
+    var pair = el("div", "expobs");
+    var e = el("div", "r");
+    e.appendChild(el("span", "t", "Expected"));
+    e.appendChild(el("span", "v", c.expected));
+    pair.appendChild(e);
+    var o = el("div", "r " + (failed ? "bad" : "good"));
+    o.appendChild(el("span", "t", "Observed"));
+    o.appendChild(el("span", "v", c.observed));
+    pair.appendChild(o);
+    cell.appendChild(pair);
+    if (failed && c.evidence) {
+      cell.appendChild(el("div", "why", c.evidence));
+    }
+    tr.appendChild(cell);
+    rows.appendChild(tr);
+  });
+}
+
+function renderRecovery(rec, data) {
+  var timeline = $("r-timeline");
+  clear(timeline);
+  var failedState = rec.recovery_state === "RECOVERY_FAILED";
+  var history = rec.state_history || [];
+  var reasons = rec.transitions || [];
+
+  history.forEach(function (state, index) {
+    var reached = index < history.length;
+    var li = el("li", failedState && state === failedState ? "bad" : null);
+    var head = el("div", "st");
+    head.appendChild(el("span", "tick", reached ? "\u2713" : "\u2022"));
+    head.appendChild(document.createTextNode(state));
+    head.appendChild(badge(state));
+    li.appendChild(head);
+    if (reasons[index]) {
+      li.appendChild(el("div", "why", reasons[index]));
+    }
+    timeline.appendChild(li);
+  });
+
+  setText("r-attempted", yesNo(rec.rollback_attempted));
+  setText("r-succeeded", yesNo(rec.rollback_succeeded));
+  setText("r-baseline", rec.rollback_verification_status);
+  setText("r-final", rec.final_verification_status);
+  setText("r-candidate", rec.final_candidate_id);
+  setText("r-replan", yesNo(rec.replanning_required));
+  kv($("r-original"), rec.initial_decision);
+
+  var warn = $("r-notaccepted");
+  if (rec.migration_accepted) {
+    warn.classList.add("hidden");
+  } else if (data.verification.verification_status === "INCONCLUSIVE"
+             || data.decision.decision === "INCONCLUSIVE") {
+    clear(warn);
+    warn.appendChild(el("b", null, "No migration was accepted. "));
+    warn.appendChild(document.createTextNode(
+      "UPSHIFT could not establish behavioral correctness because this read-only "
+      + "analysis did not execute the repository behavior, so recovery ended in "
+      + rec.recovery_state + " with no acceptance and no rollback."
+    ));
+    warn.classList.remove("hidden");
+  } else {
+    clear(warn);
+    warn.appendChild(el("b", null, "Completed is not a migration success. "));
+    warn.appendChild(document.createTextNode(
+      "Recovery ended in " + rec.recovery_state + ", but the original migration decision remains "
+      + rec.initial_decision + ". The verified baseline was restored; the migration was not accepted."
+    ));
+    warn.classList.remove("hidden");
+  }
+
+  var ex = $("r-explanations");
+  clear(ex);
+  (rec.explanations || []).slice(0, 4).forEach(function (line) {
+    var item = el("div", null, line);
+    item.style.marginTop = "6px";
+    ex.appendChild(item);
+  });
+}
+
+function renderVerdict(data) {
+  var decision = data.decision.decision;
+  var rec = data.recovery;
+  var tone = toneFor(decision);
+  var box = $("verdict");
+  box.className = "verdict v-" + tone;
+
+  setText("verdict-mark", glyphFor(decision));
+  setText("verdict-title", "Migration");
+  var dec = $("verdict-decision");
+  clear(dec);
+  dec.appendChild(badge(decision));
+
+  setText("verdict-detail", data.final_outcome_detail);
+  var reason = (data.decision.explanations || [])[0] || "";
+  setText("verdict-reason", reason);
+
+  var line = $("verdict-recovery");
+  if (rec.rollback_attempted) {
+    clear(line);
+    line.appendChild(el("b", null, "Recovery: "));
+    line.appendChild(document.createTextNode(
+      (rec.state_history || []).join(" \u2192 ") + ". "
+    ));
+    line.appendChild(el("b", null, "Baseline verification: "));
+    line.appendChild(document.createTextNode(rec.rollback_verification_status + ". "));
+    line.appendChild(el("b", null, "Final candidate: "));
+    line.appendChild(document.createTextNode(rec.final_candidate_id + "."));
+    line.classList.remove("hidden");
+  } else {
+    line.classList.add("hidden");
+  }
+}
+
+function renderMetrics(data) {
+  var impact = data.impact, risk = data.risk, v = data.verification, d = data.decision;
+
+  setText("m-impact-v", String(impact.impacted_file_count));
+  setText("m-impact-s", impact.direct_reference_count + " direct \u00b7 " + impact.target_reference_count + " target refs");
+  $("m-impact").className = "metric info";
+
+  setText("m-risk-v", risk.risk_level);
+  setText("m-risk-s", "score " + risk.risk_score);
+  $("m-risk").className = "metric " + (risk.risk_level === "HIGH" ? "bad" : (risk.risk_level === "LOW" ? "ok" : "warn"));
+
+  setText("m-verification-v", v.verification_status);
+  setText("m-verification-s", v.passed_cases + " passed \u00b7 " + v.failed_cases + " failed \u00b7 " + v.inconclusive_cases + " inconclusive");
+  $("m-verification").className = "metric " + toneFor(v.verification_status);
+
+  setText("m-decision-v", d.decision);
+  setText("m-decision-s", d.accepted ? "migration accepted" : "migration not accepted");
+  $("m-decision").className = "metric " + toneFor(d.decision);
+}
+
+/* ---------- safety chain ----------
+   Built only from values in the response. Nothing here is invented: each step
+   reads a field the engines produced, and the expected/observed proof block
+   appears only when the verifier actually reported a *failing* case. */
+
+/* The one honest summary for an undecided run. It is used verbatim for the
+   chain subtitle, the final-outcome step, and the recovery banner, so the same
+   state can never be described two different ways. */
+var UNDECIDED_SUMMARY = "UPSHIFT could not establish behavioral correctness because this "
+  + "read-only analysis did not execute the repository behavior. No migration was accepted.";
+var UNDECIDED_REASON = "Behavior could not be verified in read-only repository analysis, "
+  + "so no preserved behavior case could be confirmed or contradicted.";
+
+function renderSafetyChain(data) {
+  var impact = data.impact, risk = data.risk, v = data.verification;
+  var d = data.decision, rec = data.recovery;
+
+  /* An INCONCLUSIVE case is not a failing case. Real-repository mode reads a
+     repository without executing it, so every case there is INCONCLUSIVE with
+     expected and observed both UNAVAILABLE. Counting those as failures would
+     claim a behavior mismatch that was never observed, so the undecided state
+     is reported as its own outcome and never as a regression. */
+  var undecided = v.verification_status === "INCONCLUSIVE" || d.decision === "INCONCLUSIVE";
+  var failed = (v.case_results || []).filter(function (c) { return c.status === "FAIL"; });
+  var primary = (!undecided && failed.length) ? failed[0] : null;
+
+  var steps = [];
+
+  steps.push({
+    label: "Migration request",
+    value: data.migration_name,
+    detail: "Controlled candidate: " + data.candidate_id,
+    tone: "info"
+  });
+
+  steps.push({
+    label: "Impact analysis",
+    value: impact.impacted_file_count + " file" + (impact.impacted_file_count === 1 ? "" : "s") + " require review",
+    detail: impact.direct_reference_count + " direct and " + impact.target_reference_count + " target references",
+    tone: "info"
+  });
+
+  steps.push({
+    label: "Risk analysis",
+    value: "Risk " + risk.risk_level,
+    detail: "Score " + risk.risk_score + " across " + (risk.risk_factor_details || risk.risk_factors || []).length + " factors. Risk is context; verification is the gate.",
+    tone: risk.risk_level === "HIGH" ? "warn" : (risk.risk_level === "LOW" ? "ok" : "warn")
+  });
+
+  steps.push({
+    label: "Migration / Bob boundary",
+    value: "Candidate evaluated, never executed here",
+    detail: "UPSHIFT applies no migration. The candidate stands in for work an orchestrator such as IBM Bob would perform.",
+    tone: "info"
+  });
+
+  steps.push({
+    label: "Independent verification",
+    value: v.verification_status,
+    detail: undecided
+      ? v.inconclusive_cases + " static review case" + (v.inconclusive_cases === 1 ? "" : "s")
+        + " could not be executed, so runtime behavior is unverified"
+      : v.passed_cases + " of " + v.total_cases + " preserved behavior cases passed" + (v.inconclusive_cases ? ", " + v.inconclusive_cases + " inconclusive" : ""),
+    tone: toneFor(v.verification_status)
+  });
+
+  steps.push({
+    label: "Decision",
+    value: d.decision,
+    detail: d.explanations && d.explanations.length ? d.explanations[0] : "Driven by independent verification.",
+    tone: toneFor(d.decision)
+  });
+
+  if (undecided) {
+    steps.push({
+      label: "Runtime behavior",
+      value: "Not established",
+      detail: UNDECIDED_REASON,
+      tone: "warn"
+    });
+  } else if (primary) {
+    steps.push({
+      label: "Regression detected",
+      value: primary.case_id + " returned the wrong label",
+      detail: "Expected " + primary.expected + ", observed " + primary.observed + ".",
+      tone: "bad"
+    });
+  } else {
+    steps.push({
+      label: "Regression detected",
+      value: "None",
+      detail: "Every preserved behavior case returned its expected value.",
+      tone: "ok"
+    });
+  }
+
+  if (rec.rollback_attempted) {
+    steps.push({
+      label: "Rollback",
+      value: rec.rollback_succeeded ? "Controlled rollback completed" : "Rollback did not succeed",
+      detail: "At most one rollback was attempted, using the controlled provider. No Git state was changed.",
+      tone: rec.rollback_succeeded ? "warn" : "bad"
+    });
+    steps.push({
+      label: "Re-verification",
+      value: "Baseline verification " + rec.rollback_verification_status,
+      detail: "The restored baseline was re-run through the same independent cases.",
+      tone: toneFor(rec.rollback_verification_status)
+    });
+  } else if (undecided) {
+    steps.push({
+      label: "Rollback",
+      value: "No rollback performed",
+      detail: "No rollback was performed because no migration was executed and no controlled baseline was available.",
+      tone: "warn"
+    });
+    steps.push({
+      label: "Re-verification",
+      value: "Not applicable",
+      detail: "Nothing was executed, so there is no restored baseline to re-verify.",
+      tone: "warn"
+    });
+  } else {
+    steps.push({
+      label: "Rollback",
+      value: "Not required",
+      detail: "The candidate was accepted, so no recovery action was taken.",
+      tone: "ok"
+    });
+    steps.push({
+      label: "Re-verification",
+      value: "Not applicable",
+      detail: "Nothing was restored, so there is no baseline to re-verify.",
+      tone: "ok"
+    });
+  }
+
+  steps.push({
+    label: "Final outcome",
+    value: data.final_outcome,
+    detail: undecided ? UNDECIDED_SUMMARY : data.final_outcome_detail,
+    tone: rec.migration_accepted ? "ok" : (undecided ? "warn" : "bad")
+  });
+
+  var list = $("chain");
+  clear(list);
+  steps.forEach(function (step, index) {
+    var li = el("li", "c-" + step.tone);
+    li.setAttribute("data-n", String(index + 1));
+    li.appendChild(el("div", "cl", step.label));
+    li.appendChild(el("div", "cv", step.value));
+    li.appendChild(el("div", "cd", step.detail));
+    list.appendChild(li);
+  });
+
+  var proof = $("proof");
+  if (undecided) {
+    proof.classList.add("hidden");
+    setText("chain-sub", UNDECIDED_SUMMARY);
+  } else if (primary) {
+    setText("proof-expected", primary.expected);
+    setText("proof-observed", primary.observed);
+    setText("proof-case", "Case " + primary.case_id + " - " + (primary.description || "preserved behavior case"));
+    proof.classList.remove("hidden");
+    setText("chain-sub", "A behavior regression was detected, so UPSHIFT rejected the migration and restored the verified baseline.");
+  } else {
+    proof.classList.add("hidden");
+    setText("chain-sub", "No regression was detected, so the candidate was accepted and no recovery was needed.");
+  }
+}
+
+/* ---------- Bob / MCP integration status ----------
+   Rendered from the read-only `integration` block on GET /api/candidates.
+   A level is only ever shown with the exact status the backend reported. */
+var INTEGRATION_STATE = null;
+
+function statusLabel(status) {
+  if (status === "verified") { return "Verified"; }
+  if (status === "configured") { return "Configured"; }
+  if (status === "not_verified") { return "Not verified"; }
+  return status ? status.replace(/_/g, " ") : "Unreported";
+}
+
+function renderIntegration(integration) {
+  INTEGRATION_STATE = integration;
+  if (!integration) { return; }
+
+  var list = $("integ");
+  clear(list);
+  (integration.levels || []).forEach(function (level) {
+    var li = el("li", "s-" + level.status);
+    var st = el("div", "st");
+    st.appendChild(el("div", "k", statusLabel(level.status)));
+    li.appendChild(st);
+    var body = el("div", "body");
+    body.appendChild(el("div", "t", level.label));
+    body.appendChild(el("div", "e", level.evidence));
+    if (level.verified_by) {
+      body.appendChild(el("div", "v", "Verified by: " + level.verified_by));
+    }
+    li.appendChild(body);
+    list.appendChild(li);
+  });
+
+  setText("integ-bob", integration.bob_responsibility);
+  setText("integ-upshift", integration.upshift_responsibility);
+}
+
+function renderRequest(data) {
+  setText("ro-migration", data.migration_name);
+  setText("ro-source", data.impact.old_api + "  \u2192  " + data.impact.target_api);
+}
+
+/* Real-repository mode: render what the bounded read actually covered. Nothing
+   here is computed in the browser; every value arrives from the response. */
+function renderRepository(repository) {
+  var card = $("repository-card");
+  if (!repository) {
+    show("repository-card", false);
+    return;
+  }
+  show("repository-card", true);
+
+  setText("r-name", repository.repository_name);
+  setText("r-inspected", repository.inspected_file_count +
+    (repository.inspected_truncated ? " (list truncated)" : ""));
+  setText("r-skipped", repository.skipped_file_count);
+  setText("r-bytes", repository.total_bytes_read);
+  setText("r-restore", repository.rollback_mechanism);
+
+  var files = $("r-files");
+  clear(files);
+  (repository.inspected_paths || []).forEach(function (path) {
+    files.appendChild(el("li", null, path));
+  });
+  if (!(repository.inspected_paths || []).length) {
+    files.appendChild(el("li", "empty", "No file was read."));
+  }
+
+  var skips = $("r-skips");
+  clear(skips);
+  (repository.skipped || []).forEach(function (group) {
+    var head = group.count + " " + group.reason + (group.truncated ? " (list truncated)" : "");
+    skips.appendChild(el("li", null, head));
+    (group.recorded_paths || []).forEach(function (path) {
+      skips.appendChild(el("li", "sub", path));
+    });
+  });
+  if (!(repository.skipped || []).length) {
+    skips.appendChild(el("li", "empty", "Nothing was skipped."));
+  }
+
+  var limits = $("r-restrictions");
+  clear(limits);
+  (repository.safety_restrictions || []).forEach(function (text) {
+    limits.appendChild(el("li", null, text));
+  });
+}
+
+/* The two analysis modes, as the server reports them. The browser never decides
+   whether a mode is available; it only reflects what the boundary allows. */
+function renderModes(modes) {
+  if (!modes) { return; }
+  var real = modes.real_repository || {};
+  var demo = modes.demo || {};
+
+  $("mode-real-label").className = real.available ? "" : "off";
+  $("mode-real").disabled = !real.available;
+
+  setText(
+    "boundary-note",
+    (real.available ? "" : "Unavailable: ") + (real.reason || real.summary || "") +
+    (real.boundary_policy ? " " + real.boundary_policy : "")
+  );
+  setText("request-sub", demo.available
+    ? "Select a controlled candidate. Only statically allowlisted identifiers are accepted."
+    : "No analysis mode is available.");
+}
+
+function selectMode(mode) {
+  var isReal = mode === "real_repository";
+  show("demo-fields", !isReal);
+  show("real-fields", isReal);
+  setState("idle");
+}
+
+function realRepositoryBody() {
+  return {
+    repository_path: $("repo-path").value.trim(),
+    migration: {
+      name: $("repo-migration-name").value.trim(),
+      old_api: $("repo-old-api").value.trim(),
+      target_api: $("repo-target-api").value.trim()
+    }
+  };
+}
+
+function render(data) {
+  renderRequest(data);
+  renderRepository(data.repository);
+  renderMetrics(data);
+  renderVerdict(data);
+  renderSafetyChain(data);
+  renderImpact(data.impact);
+  renderRisk(data.risk, data.decision);
+  renderVerification(data.verification);
+  renderRecovery(data.recovery, data);
+  renderIntegration(INTEGRATION_STATE);
+
+  show("state-idle", false);
+  show("state-loading", false);
+  show("state-error", false);
+  show("verdict", true);
+  show("metrics", true);
+  show("chain-card", true);
+  show("panels", true);
+}
+
+/* Exported so the render path can be exercised directly against a real API
+   payload without a browser. */
+var UPSHIFT_UI = {
+  render: render,
+  renderImpact: renderImpact,
+  renderRisk: renderRisk,
+  renderVerification: renderVerification,
+  renderRecovery: renderRecovery,
+  renderVerdict: renderVerdict,
+  renderMetrics: renderMetrics,
+  renderSafetyChain: renderSafetyChain,
+  renderIntegration: renderIntegration,
+  renderRepository: renderRepository,
+  renderModes: renderModes,
+  selectMode: selectMode,
+  realRepositoryBody: realRepositoryBody,
+  statusLabel: statusLabel,
+  toneFor: toneFor
+};
+
+function setState(name) {
+  show("state-idle", name === "idle");
+  show("state-loading", name === "loading");
+  show("state-error", name === "error");
+}
+
+function fail(message) {
+  setState("error");
+  setText("error-text", message);
+  show("verdict", false);
+  show("metrics", false);
+  show("panels", false);
+  setText("run-status", "The analysis could not be completed.");
+}
+
+function postAnalysis(body, button, loadingCopy) {
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  setState("loading");
+  setText("loading-copy", loadingCopy);
+
+  fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }).then(function (response) {
+    return response.json().then(function (payload) {
+      return { ok: response.ok, body: payload };
+    });
+  }).then(function (result) {
+    if (!result.ok) {
+      var detail = result.body && result.body.error ? result.body.error : "the request was refused";
+      fail(detail.charAt(0).toUpperCase() + detail.slice(1) + ".");
+      return;
+    }
+    render(result.body);
+    setText("run-status", result.body.mode === "real_repository"
+      ? "Read-only repository analysis complete. No repository file was changed."
+      : "Analysis complete for " + result.body.candidate_id + ".");
+  }).catch(function () {
+    fail("The dashboard could not reach the analysis service.");
+  }).then(function () {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  });
+}
+
+function run() {
+  postAnalysis(
+    { candidate_id: $("candidate").value },
+    $("run"),
+    "Running the existing UPSHIFT engines for the selected candidate."
+  );
+}
+
+function runRealRepository() {
+  postAnalysis(
+    realRepositoryBody(),
+    $("run-real"),
+    "Reading the repository without executing it, then running the existing UPSHIFT engines."
+  );
+}
+
+function boot() {
+  ["mode-demo", "mode-real"].forEach(function (id) {
+    $(id).addEventListener("change", function () {
+      selectMode($(id).value);
+    });
+  });
+  $("run-real").addEventListener("click", runRealRepository);
+
+  fetch("/api/candidates").then(function (r) { return r.json(); }).then(function (info) {
+    var select = $("candidate");
+    clear(select);
+    (info.candidates || []).forEach(function (id) {
+      var option = el("option", null, id);
+      option.value = id;
+      select.appendChild(option);
+    });
+    if (info.default_candidate) { select.value = info.default_candidate; }
+    $("run").addEventListener("click", run);
+    setState("idle");
+    renderIntegration(info.integration);
+    renderModes(info.modes);
+  }).catch(function () {
+    setState("error");
+    setText("error-text", "The controlled candidate list could not be loaded.");
+  });
+}
+
+if (typeof document !== "undefined" && document.addEventListener) {
+  document.addEventListener("DOMContentLoaded", boot);
+}
+
+if (typeof module !== "undefined" && module.exports) { module.exports = UPSHIFT_UI; }
+</script>
+</body>
+</html>

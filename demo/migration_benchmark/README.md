@@ -46,6 +46,8 @@ The `target/` package is a reference fixture that makes the new contract visible
 - `target/profile_service.py`: Reference implementation of the migrated behavior.
 - `tests/test_old_baseline.py`: Baseline behavior and OLD contract checks.
 - `tests/test_target_fixture.py`: Checks for the TARGET reference fixture.
+- `tests/test_recovery_rollback.py`: Controlled rollback and restoration evidence.
+- `recovery_demo.py`: Runnable four-stage controlled rollback demonstration.
 - `migration_metadata.json`: Machine-readable contract, migration, risk, and verification notes.
 
 ## Expected migration
@@ -58,7 +60,9 @@ The baseline test file is intentionally written against the OLD service. A migra
 
 The OLD baseline must pass before migration. A correct migration should also pass the same behavior cases after its source integration changes. A deliberately incorrect migration can be introduced by ignoring the optional `display_name` value or returning only `given_name`; the existing `user-002` or `user-001` assertion would then provide regression evidence.
 
-No regression detector, impact analyzer, risk scorer, rollback mechanism, or UPSHIFT orchestration is included in this benchmark.
+No regression detector, impact analyzer, or risk scorer is included in this benchmark. Those live in the UPSHIFT engine, not here.
+
+A controlled rollback demonstration is included: `recovery_demo.py` drives the known-good baseline, a correct migration, and an intentionally regressed migration through the UPSHIFT recovery layer, and `tests/test_recovery_rollback.py` asserts the deterministic sequence. Restoration copies the OLD baseline into a temporary working copy outside the repository, so the protected baseline implementation is only ever read and is never modified.
 
 ## Run the benchmark
 
@@ -78,4 +82,17 @@ Compile the benchmark without running behavior tests:
 
 ```bash
 python -m compileall -q demo/migration_benchmark
+```
+
+Run the controlled rollback demonstration:
+
+```bash
+python -m demo.migration_benchmark.recovery_demo
+```
+
+Demonstrate the intentional regression (expected to fail):
+
+```bash
+set UPSHIFT_RUN_REGRESSION_DEMO=1
+python -m pytest demo/migration_benchmark/candidates/regression_migration/tests -q
 ```

@@ -13,7 +13,7 @@ import pytest
         "app.core",
         "app.security",
         "app.verification",
-        "mcp",
+        "upshift_mcp",
     ],
 )
 def test_scaffold_packages_are_importable(module_name):

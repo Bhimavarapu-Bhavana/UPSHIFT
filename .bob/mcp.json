@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "upshift-migration-evidence": {
+      "command": "python",
+      "args": ["${workspaceFolder}/.bob/mcp_launcher.py"],
+      "cwd": "${workspaceFolder}",
+      "disabled": false
+    }
+  }
+}
